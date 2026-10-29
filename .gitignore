@@ -12,6 +12,11 @@
 .env*
 !.env.example
 
+# local customer source data
+/data
+*.xlsx
+*.xls
+
 # logs
 npm-debug.log*
 yarn-debug.log*
