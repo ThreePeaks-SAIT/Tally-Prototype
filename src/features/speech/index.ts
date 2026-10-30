@@ -1,2 +1,1 @@
-// Shared speech APIs will be exported here when the Count implementation begins.
-export {}
+export { useSpeechRecognition } from './hooks/use-speech-recognition'
