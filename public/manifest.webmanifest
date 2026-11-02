@@ -1,0 +1,10 @@
+{
+  "name": "Tally",
+  "short_name": "Tally",
+  "description": "Kitchen inventory for Sierra Cafe",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#F6F4F0",
+  "theme_color": "#1E3A5F",
+  "icons": []
+}

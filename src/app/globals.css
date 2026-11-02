@@ -1,0 +1,50 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 246 244 240;
+  --surface: 255 255 255;
+  --surface-muted: 251 250 247;
+
+  --foreground: 14 23 38;
+  --foreground-muted: 100 116 139;
+  --foreground-subtle: 148 163 184;
+
+  --border: 228 230 233;
+  --border-soft: 239 241 243;
+
+  --primary: 30 58 95;
+  --primary-foreground: 255 255 255;
+  --primary-soft: 237 242 248;
+
+  --success: 21 128 61;
+  --success-soft: 220 252 231;
+  --warning: 180 83 9;
+  --warning-soft: 254 243 199;
+  --danger: 153 27 27;
+  --danger-soft: 254 226 226;
+
+  --accent: 107 122 63;
+  --accent-soft: 232 237 214;
+
+  --radius-sm: 0.375rem;
+  --radius: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: rgb(var(--background));
+  color: rgb(var(--foreground));
+}
