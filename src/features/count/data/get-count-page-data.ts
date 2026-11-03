@@ -2,22 +2,10 @@ import 'server-only'
 
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
-import type { CountPageData } from '../types'
+import type { CountLocationsPageData, CountPageData } from '../types'
 
-export async function getCountPageData(): Promise<CountPageData> {
+async function getActiveSessionId() {
   const supabase = createServerSupabaseClient()
-  const [{ data: vendors, error: vendorsError }, { data: items, error: itemsError }] = await Promise.all([
-    supabase.from('vendors').select('id, name'),
-    supabase
-      .from('items')
-      .select('id, description, pack_size, unit_size, par_level, vendor_id')
-      .eq('is_inventory_item', true)
-      .order('description'),
-  ])
-
-  if (vendorsError) throw new Error(`Could not load vendors: ${vendorsError.message}`)
-  if (itemsError) throw new Error(`Could not load count items: ${itemsError.message}`)
-
   const { data: session, error: sessionError } = await supabase
     .from('inventory_count_sessions')
     .select('id')
@@ -27,29 +15,96 @@ export async function getCountPageData(): Promise<CountPageData> {
     .maybeSingle()
 
   if (sessionError) throw new Error(`Could not load the active count: ${sessionError.message}`)
+  return session?.id ?? null
+}
 
-  let countedItemIds: string[] = []
-  if (session) {
+export async function getCountLocationsPageData(): Promise<CountLocationsPageData> {
+  const supabase = createServerSupabaseClient()
+  const [{ data: locations, error: locationsError }, { data: items, error: itemsError }, sessionId] = await Promise.all([
+    supabase
+      .from('storage_locations')
+      .select('id, name, slug')
+      .order('display_order'),
+    supabase
+      .from('inventory_overview')
+      .select('item_id, storage_location_id'),
+    getActiveSessionId(),
+  ])
+
+  if (locationsError) throw new Error(`Could not load storage locations: ${locationsError.message}`)
+  if (itemsError) throw new Error(`Could not load inventory locations: ${itemsError.message}`)
+
+  let countedItemIds = new Set<string>()
+  if (sessionId) {
     const { data: entries, error: entriesError } = await supabase
       .from('inventory_count_entries')
       .select('item_id')
-      .eq('session_id', session.id)
+      .eq('session_id', sessionId)
+
+    if (entriesError) throw new Error(`Could not load count progress: ${entriesError.message}`)
+    countedItemIds = new Set(entries.map((entry) => entry.item_id))
+  }
+
+  return {
+    locations: locations.map((location) => {
+      const locationItems = items.filter((item) => item.storage_location_id === location.id)
+
+      return {
+        id: location.id,
+        name: location.name,
+        slug: location.slug,
+        countedItems: locationItems.filter((item) => countedItemIds.has(item.item_id)).length,
+        totalItems: locationItems.length,
+      }
+    }),
+    unassignedItemCount: items.filter((item) => item.storage_location_id === null).length,
+  }
+}
+
+export async function getCountPageData(locationSlug: string): Promise<CountPageData | null> {
+  const supabase = createServerSupabaseClient()
+  const { data: location, error: locationError } = await supabase
+    .from('storage_locations')
+    .select('id, name, slug')
+    .eq('slug', locationSlug)
+    .maybeSingle()
+
+  if (locationError) throw new Error(`Could not load storage location: ${locationError.message}`)
+  if (!location) return null
+
+  const [{ data: items, error: itemsError }, sessionId] = await Promise.all([
+    supabase
+      .from('inventory_overview')
+      .select('item_id, description, pack_size, unit_size, par_level, vendor_name')
+      .eq('storage_location_id', location.id)
+      .order('description'),
+    getActiveSessionId(),
+  ])
+
+  if (itemsError) throw new Error(`Could not load count items: ${itemsError.message}`)
+
+  let countedItemIds: string[] = []
+  if (sessionId && items.length > 0) {
+    const { data: entries, error: entriesError } = await supabase
+      .from('inventory_count_entries')
+      .select('item_id')
+      .eq('session_id', sessionId)
+      .in('item_id', items.map((item) => item.item_id))
 
     if (entriesError) throw new Error(`Could not load count progress: ${entriesError.message}`)
     countedItemIds = entries.map((entry) => entry.item_id)
   }
 
-  const vendorNames = new Map(vendors.map((vendor) => [vendor.id, vendor.name]))
-
   return {
     countedItemIds,
+    location,
     items: items.map((item) => ({
-      id: item.id,
+      id: item.item_id,
       description: item.description,
       packSize: item.pack_size,
       unitSize: item.unit_size,
       parLevel: item.par_level === null ? null : Number(item.par_level),
-      vendorName: vendorNames.get(item.vendor_id) ?? 'Unknown vendor',
+      vendorName: item.vendor_name,
     })),
   }
 }

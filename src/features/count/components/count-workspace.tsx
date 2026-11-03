@@ -1,18 +1,20 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useId, useMemo, useState, useTransition } from 'react'
-import { ArrowRight, AudioLines, Mic, PackageOpen, Search, Square, Star } from 'lucide-react'
+import { ArrowRight, AudioLines, CheckCircle2, ChevronLeft, Mic, PackageOpen, Search, Square, Star } from 'lucide-react'
 
 import { useSpeechRecognition } from '@/features/speech'
 
 import { saveCountEntry } from '../actions/save-count-entry'
 import { findMatchingItems, formatItemName } from '../lib/item-search'
 import { parseSpokenQuantity } from '../lib/parse-spoken-quantity'
-import type { CountItem } from '../types'
+import type { CountItem, CountLocation } from '../types'
 
 interface CountWorkspaceProps {
   initialCountedItemIds: string[]
   items: CountItem[]
+  location: CountLocation
 }
 
 interface VoiceCaptureStatusProps {
@@ -64,7 +66,7 @@ function getInitialItem(items: CountItem[], countedItemIds: Set<string>) {
     ?? items[0]
 }
 
-export function CountWorkspace({ items, initialCountedItemIds }: CountWorkspaceProps) {
+export function CountWorkspace({ items, initialCountedItemIds, location }: CountWorkspaceProps) {
   const [countedItemIds, setCountedItemIds] = useState(() => new Set(initialCountedItemIds))
   const [selectedItem, setSelectedItem] = useState<CountItem | undefined>(() => getInitialItem(items, countedItemIds))
   const [query, setQuery] = useState('')
@@ -167,8 +169,15 @@ export function CountWorkspace({ items, initialCountedItemIds }: CountWorkspaceP
       <section className="grid min-h-[70vh] place-items-center px-6 text-center">
         <div>
           <PackageOpen className="mx-auto mb-4 text-foreground-muted" size={32} />
-          <h1 className="text-page-title font-semibold tracking-tight">No inventory items available</h1>
-          <p className="mt-2 text-body text-foreground-muted">Import the catalog before starting a count.</p>
+          <h1 className="text-page-title font-semibold tracking-tight">No items assigned to {location.name}</h1>
+          <p className="mt-2 text-body text-foreground-muted">Choose another storage location to continue counting.</p>
+          <Link
+            className="mt-6 inline-flex h-11 items-center gap-2 rounded bg-primary px-4 text-body-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            href="/count"
+          >
+            <ChevronLeft aria-hidden="true" size={16} />
+            Back to locations
+          </Link>
         </div>
       </section>
     )
@@ -178,13 +187,44 @@ export function CountWorkspace({ items, initialCountedItemIds }: CountWorkspaceP
   const progress = items.length ? countedItemIds.size / items.length * 100 : 0
   const speechUnavailable = !itemSpeech.isSupported || !quantitySpeech.isSupported
 
+  if (itemsLeft === 0) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-surface-muted px-4 py-10 sm:px-6">
+        <section className="w-full max-w-lg rounded-lg border border-border bg-surface p-7 text-center shadow-elevated sm:p-8">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-success-soft text-success">
+            <CheckCircle2 aria-hidden="true" size={28} />
+          </div>
+          <p className="mt-5 font-mono text-micro font-medium uppercase tracking-widest text-success">Location complete</p>
+          <h1 className="mt-2 text-page-title font-semibold tracking-tight">{location.name} is counted</h1>
+          <p className="mt-3 text-body text-foreground-muted">
+            All {items.length} items in this location have a current count.
+          </p>
+          <Link
+            className="mt-7 inline-flex h-11 items-center justify-center gap-2 rounded bg-primary px-5 text-body-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            href="/count"
+          >
+            Choose another location
+            <ArrowRight aria-hidden="true" size={16} />
+          </Link>
+        </section>
+      </main>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-surface-muted">
       <header className="border-b border-border bg-surface px-4 py-3 sm:px-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <Link
+            aria-label="Back to storage locations"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded border border-border text-foreground-muted hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            href="/count"
+          >
+            <ChevronLeft aria-hidden="true" size={18} />
+          </Link>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-3 text-body-sm font-semibold">
-              <h1 className="truncate">Tuesday count · Sysco items</h1>
+              <h1 className="truncate">Today&apos;s count · {location.name}</h1>
               <span className="shrink-0 font-mono text-caption font-medium text-foreground-muted">
                 {countedItemIds.size} of {items.length} counted
               </span>
