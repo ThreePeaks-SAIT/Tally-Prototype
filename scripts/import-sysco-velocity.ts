@@ -22,7 +22,6 @@ type SourceRow = {
   packSize: number
   unitSize: string
   description: string
-  brand: string | null
   salesAmount: number
   purchaseType: PurchaseType
   quantityShipped: number
@@ -34,7 +33,6 @@ type CatalogItem = {
   description: string
   pack_size: number
   unit_size: string
-  brand: string | null
   is_inventory_item: boolean
 }
 
@@ -65,7 +63,6 @@ const COLUMN = {
   packSize: 9,
   unitSize: 10,
   description: 11,
-  brand: 12,
   salesAmount: 13,
   brokenCase: 14,
   quantityShipped: 15,
@@ -161,7 +158,6 @@ function validateHeaders(header: Row) {
     [COLUMN.packSize, 'Item Pack'],
     [COLUMN.unitSize, 'Item Size'],
     [COLUMN.description, 'Item Description Line 1'],
-    [COLUMN.brand, 'Item Brand'],
     [COLUMN.salesAmount, 'Sales'],
     [COLUMN.brokenCase, 'B/C'],
     [COLUMN.quantityShipped, 'Qty shipped'],
@@ -196,7 +192,6 @@ function parseDataRow(row: Row, rowNumber: number): Omit<SourceRow, 'month'> {
     packSize,
     unitSize: requiredText(row[COLUMN.unitSize], 'unit size', rowNumber),
     description: requiredText(row[COLUMN.description], 'description', rowNumber),
-    brand: nullableText(row[COLUMN.brand]),
     salesAmount: numberValue(row[COLUMN.salesAmount], 'sales amount', rowNumber),
     purchaseType: purchaseType(syscoItemNumber, brokenCase),
     quantityShipped: numberValue(row[COLUMN.quantityShipped], 'quantity shipped', rowNumber),
@@ -276,7 +271,6 @@ function buildCatalog(history: SourceRow[]) {
       description: row.description,
       pack_size: row.packSize,
       unit_size: row.unitSize,
-      brand: row.brand,
       is_inventory_item: existing?.is_inventory_item || row.purchaseType !== 'non_inventory',
     })
   }
