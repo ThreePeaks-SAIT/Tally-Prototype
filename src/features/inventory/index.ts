@@ -1,1 +1,1 @@
-export { InventoryPage } from './components/inventory-page'
+export { default as InventoryPage } from './components/inventory-page'

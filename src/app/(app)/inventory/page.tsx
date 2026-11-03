@@ -1,5 +1,16 @@
-import { InventoryPage } from '@/features/inventory'
+import { InventoryPage } from "@/features/inventory";
 
-export default function InventoryRoute() {
-  return <InventoryPage />
+interface RouteProps {
+  searchParams: Promise<{ 
+    vendor?: string;
+    q?: string; 
+  }>;
+}
+
+export default async function Page({ searchParams }: RouteProps) {
+  
+  const resolvedParams = await searchParams;
+
+  
+  return <InventoryPage searchParams={resolvedParams} />;
 }
