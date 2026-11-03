@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "db:import:sysco": "tsx scripts/import-sysco-velocity.ts"
+    "db:import:sysco": "tsx scripts/import-sysco-velocity.ts",
+    "db:seed:storage-locations": "tsx scripts/seed-storage-locations.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
