@@ -1,18 +1,63 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useId, useMemo, useState, useTransition } from 'react'
-import { ArrowRight, Mic, PackageOpen, Search, Star } from 'lucide-react'
+import { ArrowRight, AudioLines, CheckCircle2, ChevronLeft, Mic, PackageOpen, Search, Square, Star } from 'lucide-react'
 
 import { useSpeechRecognition } from '@/features/speech'
 
 import { saveCountEntry } from '../actions/save-count-entry'
 import { findMatchingItems, formatItemName } from '../lib/item-search'
 import { parseSpokenQuantity } from '../lib/parse-spoken-quantity'
-import type { CountItem } from '../types'
+import type { CountItem, CountLocation } from '../types'
 
 interface CountWorkspaceProps {
   initialCountedItemIds: string[]
   items: CountItem[]
+  location: CountLocation
+}
+
+interface VoiceCaptureStatusProps {
+  isSpeechDetected: boolean
+  label: string
+  onStop: () => void
+  transcript: string
+}
+
+function VoiceCaptureStatus({
+  isSpeechDetected,
+  label,
+  onStop,
+  transcript,
+}: VoiceCaptureStatusProps) {
+  return (
+    <div
+      aria-live="polite"
+      className="mt-3 flex items-center gap-3 rounded-md border border-primary/25 bg-primary-soft px-4 py-3 text-primary"
+      role="status"
+    >
+      <div className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground">
+        <span className="absolute inset-0 animate-ping rounded-full bg-primary/25" />
+        <AudioLines aria-hidden="true" className="relative" size={19} />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="text-body-sm font-semibold">
+          {isSpeechDetected ? 'Voice detected' : 'Listening...'}
+        </p>
+        <p className="truncate text-caption text-foreground-muted">
+          {transcript ? `Heard: “${transcript}”` : label}
+        </p>
+      </div>
+      <button
+        className="flex h-9 shrink-0 items-center gap-2 rounded border border-primary/25 bg-surface px-3 text-caption font-semibold text-primary hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        onClick={onStop}
+        type="button"
+      >
+        <Square aria-hidden="true" fill="currentColor" size={11} />
+        Stop
+      </button>
+    </div>
+  )
 }
 
 function getInitialItem(items: CountItem[], countedItemIds: Set<string>) {
@@ -21,7 +66,7 @@ function getInitialItem(items: CountItem[], countedItemIds: Set<string>) {
     ?? items[0]
 }
 
-export function CountWorkspace({ items, initialCountedItemIds }: CountWorkspaceProps) {
+export function CountWorkspace({ items, initialCountedItemIds, location }: CountWorkspaceProps) {
   const [countedItemIds, setCountedItemIds] = useState(() => new Set(initialCountedItemIds))
   const [selectedItem, setSelectedItem] = useState<CountItem | undefined>(() => getInitialItem(items, countedItemIds))
   const [query, setQuery] = useState('')
@@ -66,6 +111,8 @@ export function CountWorkspace({ items, initialCountedItemIds }: CountWorkspaceP
     setIsAutocompleteOpen(false)
     setQuantity('')
     setMessage(null)
+    itemSpeech.reset()
+    quantitySpeech.reset()
   }
 
   const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -122,8 +169,15 @@ export function CountWorkspace({ items, initialCountedItemIds }: CountWorkspaceP
       <section className="grid min-h-[70vh] place-items-center px-6 text-center">
         <div>
           <PackageOpen className="mx-auto mb-4 text-foreground-muted" size={32} />
-          <h1 className="text-page-title font-semibold tracking-tight">No inventory items available</h1>
-          <p className="mt-2 text-body text-foreground-muted">Import the catalog before starting a count.</p>
+          <h1 className="text-page-title font-semibold tracking-tight">No items assigned to {location.name}</h1>
+          <p className="mt-2 text-body text-foreground-muted">Choose another storage location to continue counting.</p>
+          <Link
+            className="mt-6 inline-flex h-11 items-center gap-2 rounded bg-primary px-4 text-body-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            href="/count"
+          >
+            <ChevronLeft aria-hidden="true" size={16} />
+            Back to locations
+          </Link>
         </div>
       </section>
     )
@@ -131,16 +185,46 @@ export function CountWorkspace({ items, initialCountedItemIds }: CountWorkspaceP
 
   const itemsLeft = items.length - countedItemIds.size
   const progress = items.length ? countedItemIds.size / items.length * 100 : 0
-  const speechError = itemSpeech.error ?? quantitySpeech.error
   const speechUnavailable = !itemSpeech.isSupported || !quantitySpeech.isSupported
+
+  if (itemsLeft === 0) {
+    return (
+      <main className="grid min-h-screen place-items-center bg-surface-muted px-4 py-10 sm:px-6">
+        <section className="w-full max-w-lg rounded-lg border border-border bg-surface p-7 text-center shadow-elevated sm:p-8">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-success-soft text-success">
+            <CheckCircle2 aria-hidden="true" size={28} />
+          </div>
+          <p className="mt-5 font-mono text-micro font-medium uppercase tracking-widest text-success">Location complete</p>
+          <h1 className="mt-2 text-page-title font-semibold tracking-tight">{location.name} is counted</h1>
+          <p className="mt-3 text-body text-foreground-muted">
+            All {items.length} items in this location have a current count.
+          </p>
+          <Link
+            className="mt-7 inline-flex h-11 items-center justify-center gap-2 rounded bg-primary px-5 text-body-sm font-semibold text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            href="/count"
+          >
+            Choose another location
+            <ArrowRight aria-hidden="true" size={16} />
+          </Link>
+        </section>
+      </main>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-surface-muted">
       <header className="border-b border-border bg-surface px-4 py-3 sm:px-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <Link
+            aria-label="Back to storage locations"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded border border-border text-foreground-muted hover:bg-surface-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            href="/count"
+          >
+            <ChevronLeft aria-hidden="true" size={18} />
+          </Link>
           <div className="min-w-0 flex-1">
             <div className="flex items-center justify-between gap-3 text-body-sm font-semibold">
-              <h1 className="truncate">Tuesday count · Sysco items</h1>
+              <h1 className="truncate">Today&apos;s count · {location.name}</h1>
               <span className="shrink-0 font-mono text-caption font-medium text-foreground-muted">
                 {countedItemIds.size} of {items.length} counted
               </span>
@@ -178,6 +262,7 @@ export function CountWorkspace({ items, initialCountedItemIds }: CountWorkspaceP
               setQuery(event.target.value)
               setActiveMatchIndex(0)
               setIsAutocompleteOpen(Boolean(event.target.value))
+              itemSpeech.reset()
             }}
             onBlur={() => setIsAutocompleteOpen(false)}
             onFocus={() => setIsAutocompleteOpen(Boolean(query))}
@@ -188,12 +273,15 @@ export function CountWorkspace({ items, initialCountedItemIds }: CountWorkspaceP
           />
           <button
             aria-label={itemSpeech.isListening ? 'Stop listening for item name' : 'Speak item name'}
-            className="absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
-            disabled={isPaused || !itemSpeech.isSupported}
+            aria-pressed={itemSpeech.isListening}
+            className={`absolute right-2 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 ${itemSpeech.isListening ? 'ring-4 ring-primary/20' : ''}`}
+            disabled={isPaused || !itemSpeech.isSupported || quantitySpeech.isListening}
             onClick={itemSpeech.isListening ? itemSpeech.stop : itemSpeech.start}
             type="button"
           >
-            <Mic className={itemSpeech.isListening ? 'animate-pulse' : ''} size={17} />
+            {itemSpeech.isListening
+              ? <Square aria-hidden="true" fill="currentColor" size={12} />
+              : <Mic aria-hidden="true" size={17} />}
           </button>
 
           {isAutocompleteOpen && query && matches.length > 0 && (
@@ -228,6 +316,19 @@ export function CountWorkspace({ items, initialCountedItemIds }: CountWorkspaceP
             </div>
           )}
         </div>
+        {itemSpeech.isListening && (
+          <VoiceCaptureStatus
+            isSpeechDetected={itemSpeech.isSpeechDetected}
+            label="Speak the item name now"
+            onStop={itemSpeech.stop}
+            transcript={itemSpeech.transcript}
+          />
+        )}
+        {itemSpeech.error && (
+          <p aria-live="polite" className="mt-2 text-body-sm text-danger" role="alert">
+            {itemSpeech.error}
+          </p>
+        )}
         <p className="mt-2 text-right font-mono text-caption">{itemsLeft} items left</p>
       </section>
 
@@ -261,6 +362,7 @@ export function CountWorkspace({ items, initialCountedItemIds }: CountWorkspaceP
                 onChange={(event) => {
                   setQuantity(event.target.value)
                   setMessage(null)
+                  quantitySpeech.reset()
                 }}
                 placeholder="0"
                 type="number"
@@ -268,14 +370,30 @@ export function CountWorkspace({ items, initialCountedItemIds }: CountWorkspaceP
               />
               <button
                 aria-label={quantitySpeech.isListening ? 'Stop listening for quantity' : 'Speak quantity'}
-                className="absolute right-4 top-1/2 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40"
-                disabled={isPaused || isPending || !quantitySpeech.isSupported}
+                aria-pressed={quantitySpeech.isListening}
+                className={`absolute right-4 top-1/2 grid h-12 w-12 -translate-y-1/2 place-items-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 ${quantitySpeech.isListening ? 'ring-4 ring-primary/20' : ''}`}
+                disabled={isPaused || isPending || !quantitySpeech.isSupported || itemSpeech.isListening}
                 onClick={quantitySpeech.isListening ? quantitySpeech.stop : quantitySpeech.start}
                 type="button"
               >
-                <Mic className={quantitySpeech.isListening ? 'animate-pulse' : ''} size={20} />
+                {quantitySpeech.isListening
+                  ? <Square aria-hidden="true" fill="currentColor" size={14} />
+                  : <Mic aria-hidden="true" size={20} />}
               </button>
             </div>
+            {quantitySpeech.isListening && (
+              <VoiceCaptureStatus
+                isSpeechDetected={quantitySpeech.isSpeechDetected}
+                label="Say the quantity now, for example “three”"
+                onStop={quantitySpeech.stop}
+                transcript={quantitySpeech.transcript}
+              />
+            )}
+            {quantitySpeech.error && (
+              <p aria-live="polite" className="mt-2 text-body-sm text-danger" role="alert">
+                {quantitySpeech.error}
+              </p>
+            )}
             <p className="mt-2 text-center font-mono text-caption text-foreground-muted">Type the number, or tap the mic to speak</p>
           </div>
 
@@ -287,9 +405,9 @@ export function CountWorkspace({ items, initialCountedItemIds }: CountWorkspaceP
                 : 'Enter the current quantity to calculate the order amount.'}
           </div>
 
-          {(message || speechError || speechUnavailable) && (
+          {(message || speechUnavailable) && (
             <p aria-live="polite" className="mt-3 text-body-sm text-foreground-muted">
-              {message ?? speechError ?? 'Speech recognition is unavailable in this browser. You can still type each value.'}
+              {message ?? 'Speech recognition is unavailable in this browser. You can still type each value.'}
             </p>
           )}
 
