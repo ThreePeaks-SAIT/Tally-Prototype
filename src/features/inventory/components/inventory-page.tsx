@@ -128,20 +128,33 @@ export default async function InventoryPage({ searchParams }: PageProps) {
   }
 
   if (searchQuery.trim() !== "") {
-    const formattedSearch = `%${searchQuery.trim()}%`;
+  const formattedSearch = `%${searchQuery.trim()}%`;
+  
+  
+  const parsedNumericSearch = Number(searchQuery);
+  const isValidNumber = !Number.isNaN(parsedNumericSearch);
+  const safeNum = isValidNumber ? parsedNumericSearch : -1;
+
+  
+  const parsedDate = Date.parse(searchQuery.trim());
+  const isValidDate = !Number.isNaN(parsedDate);
+  
+  const safeDateString = isValidDate ? new Date(parsedDate).toISOString() : "1970-01-01T00:00:00Z";
+
+  if (currentFilter === "description") {
+    inventoryQuery = inventoryQuery.ilike("description", formattedSearch);
+  } else if (currentFilter === "current_quantity") {
+    inventoryQuery = inventoryQuery.eq("current_quantity", safeNum);
+  } else if (currentFilter === "last_counted_at") {
     
-    if (currentFilter === "description") {
-      inventoryQuery = inventoryQuery.ilike("description", formattedSearch);
-    } else if (currentFilter === "current_quantity") {
-      inventoryQuery = inventoryQuery.eq("current_quantity",Number(searchQuery));
-    } else if (currentFilter === "last_counted_at") {
-      inventoryQuery = inventoryQuery.eq("last_counted_at", Number(searchQuery));
-    } else {
-      inventoryQuery = inventoryQuery.or(
-        `description.ilike.${formattedSearch},current_quantity.ilike.${formattedSearch},last_counted_at.ilike.${formattedSearch}`
-      );
-    }
+    inventoryQuery = inventoryQuery.eq("last_counted_at", safeDateString);
+  } else {
+    
+    inventoryQuery = inventoryQuery.or(
+      `description.ilike.${formattedSearch},current_quantity.eq.${safeNum},last_counted_at.eq.${safeDateString}`
+    );
   }
+}
 
   type SupabaseItemResponse = QueryData<typeof inventoryQuery>;
 
@@ -160,6 +173,11 @@ export default async function InventoryPage({ searchParams }: PageProps) {
   const tableData: TableItem[] = isMockSelected 
     ? [] 
     : (itemsData as SupabaseItemResponse).map((item) => {
+        const safeNumber = (val: unknown) => {
+        if (val === null || val === undefined || val === "") return null;
+        const num = Number(val);
+        return Number.isNaN(num) ? null : num;
+      };
     
       
 
@@ -170,12 +188,12 @@ export default async function InventoryPage({ searchParams }: PageProps) {
                 pack_size: item.pack_size,
                 unit_size: item.unit_size,
                 vendor_name: item.vendor_name ?? "Unknown Vendor",
-                par_level: item.par_level ? Number(item.par_level) : null,
-                current_quantity: item.current_quantity ? Number(item.current_quantity) : null,
-                to_order: item.to_order ? Number(item.to_order) : null,
-                last_counted_at: item.last_counted_at ? Number(item.last_counted_at) : null,
-              };
-  });
+                par_level: safeNumber(item.par_level),
+                current_quantity: safeNumber(item.current_quantity),
+                to_order: safeNumber(item.to_order),
+                last_counted_at: safeNumber(item.last_counted_at),
+        };
+    });
 
 
   return (
