@@ -1,3 +1,4 @@
+
 import { weeklyData } from "../data/dataTypes";
 
 export default function DashboardCard({
@@ -8,15 +9,24 @@ export default function DashboardCard({
   wasteStatus,
 }: weeklyData) {
   return (
-    <article className="min-w-0 bg-surface border border-border rounded-md p-4 flex flex-col justify-center mt-10">
-      <h3 className="text-title-sm font-semibold text-foreground">This week:</h3>
-      <hr className="mt-5 mb-5"/>
-      <div className="grid grid-cols-3 gap-1 w-full mb-3">
+    <article className="min-w-0 w-full bg-surface border border-border rounded-md p-4 sm:p-5 flex flex-col mt-6 sm:mt-10">
 
-        <div className="flex flex-col items-center text-center gap-1">
+      {/* Header */}
+      <h3 className="text-title-sm font-semibold text-foreground">
+        This week:
+      </h3>
+
+      <hr className="my-4 border-border" />
+
+      {/* Metrics */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 w-full">
+
+        {/* Order Cost */}
+        <div className="flex flex-col items-center text-center gap-1 min-w-0">
           <p className="text-body-sm text-foreground">
             Order Cost:
           </p>
+
           <h2 className={`text-title-sm font-semibold ${
             orderCostStatus === "par"
               ? "text-success"
@@ -24,14 +34,18 @@ export default function DashboardCard({
           }`}>
             ${weeklyOrderCost}
           </h2>
-          <p className="text-caption text-foreground-muted">par: $1500</p>
-          
+
+          <p className="text-caption text-foreground-muted">
+            par: $1500
+          </p>
         </div>
 
-        <div className="flex flex-col items-center text-center gap-1">
+        {/* Waste Logged */}
+        <div className="flex flex-col items-center text-center gap-1 min-w-0">
           <p className="text-body-sm text-foreground">
             Waste Logged:
           </p>
+
           <h2 className={`text-title-sm font-semibold ${
             wasteStatus === "par"
               ? "text-success"
@@ -39,20 +53,28 @@ export default function DashboardCard({
           }`}>
             ${weeklyWaste}
           </h2>
-          <p className="text-caption text-foreground-muted">par: $25</p>
-          
+
+          <p className="text-caption text-foreground-muted">
+            par: $25
+          </p>
         </div>
 
-        <div className="flex flex-col items-center text-center gap-1">
+        {/* Orders Placed */}
+        <div className="col-span-2 sm:col-span-1 flex flex-col items-center text-center gap-1 min-w-0">
           <p className="text-body-sm text-foreground">
             Orders Placed:
           </p>
+
           <h2 className="text-title-sm font-semibold text-foreground">
             {ordersPlaced}
           </h2>
-          <p className="text-caption text-foreground-muted">minimum: 2</p>
+
+          <p className="text-caption text-foreground-muted">
+            minimum: 2
+          </p>
         </div>
-        </div>
+
+      </div>
     </article>
   );
 }
